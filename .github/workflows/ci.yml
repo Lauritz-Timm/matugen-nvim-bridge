@@ -43,5 +43,18 @@ jobs:
           neovim: true
           version: stable
       - name: Install Matugen
-        run: cargo install --locked --git https://github.com/InioX/matugen --tag v4.2.0
+        shell: bash
+        run: |
+          matugen_archive="$RUNNER_TEMP/matugen.tar.gz"
+          matugen_directory="$RUNNER_TEMP/matugen-bin"
+          curl --fail --location --retry 4 --retry-all-errors \
+            --output "$matugen_archive" \
+            https://github.com/InioX/matugen/releases/download/v4.2.0/matugen-4.2.0-x86_64.tar.gz
+          printf '%s  %s\n' a2e3b50e49ed6439999ba3c252ed04fabd98ee4e9d12e5e5dff2e66370569751 "$matugen_archive" | sha256sum --check -
+          mkdir -p "$matugen_directory"
+          tar -xzf "$matugen_archive" -C "$matugen_directory"
+          matugen_binary="$(find "$matugen_directory" -type f -name matugen -print -quit)"
+          test -n "$matugen_binary"
+          chmod +x "$matugen_binary"
+          dirname "$matugen_binary" >> "$GITHUB_PATH"
       - run: make test-matugen
