@@ -219,6 +219,9 @@ python3 tests/matugen.py --preview  # also regenerate the palette preview
 CI runs the core suite on the minimum supported Neovim and stable Neovim, plus a
 real Matugen integration suite. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Repository administration and protection rules are documented in
+[the maintainer guide](.github/MAINTAINING.md).
+
 Color conversion uses the public-domain
 [Oklab matrices](https://bottosson.github.io/posts/oklab/). The plugin is available
 under the [MIT license](LICENSE).

@@ -1,9 +1,17 @@
 name: CI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   neovim:
@@ -29,6 +37,9 @@ jobs:
           neovim: true
           version: ${{ matrix.neovim }}
       - run: make test
+      - name: Check repository setup tooling
+        if: matrix.os == 'ubuntu-latest' && matrix.neovim == 'stable'
+        run: python3 tests/repository.py
 
   matugen:
     name: Matugen 4.2 integration
