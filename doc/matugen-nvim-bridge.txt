@@ -1,0 +1,183 @@
+*matugen-nvim-bridge.txt*  A Matugen colorscheme with automatic palette reload.
+
+==============================================================================
+CONTENTS                                                  *matugen-nvim-bridge*
+
+    Setup                  |matugen-nvim-bridge-setup|
+    Options                |matugen-nvim-bridge-options|
+    Input                  |matugen-nvim-bridge-input|
+    Reloading              |matugen-nvim-bridge-reload|
+    Contrast               |matugen-nvim-bridge-contrast|
+    Lua API                |matugen-nvim-bridge-api|
+    Troubleshooting        |matugen-nvim-bridge-troubleshooting|
+
+==============================================================================
+SETUP                                                     *matugen-nvim-bridge-setup*
+
+Requires Neovim 0.10.4+ and a true-color terminal or GUI. Matugen generates the
+input JSON. No other Neovim plugin is required.
+
+Install the repository on 'runtimepath', then: >lua
+
+    require("matugen_nvim_bridge").setup({
+        palette_path = "~/.cache/matugen/nvim-colors.json",
+    })
+<
+setup() selects the colorscheme, enables 'termguicolors', sets 'background' from
+the palette, and starts a file watcher. Configure this plugin as your colorscheme
+rather than combining it with another colorscheme.
+
+For Matugen, copy templates/palette.json into your templates directory and add: >
+
+    [templates.neovim]
+    input_path = "~/.config/matugen/templates/nvim-colors.json"
+    output_path = "~/.cache/matugen/nvim-colors.json"
+<
+Generate the output before starting Neovim. For example: >
+
+    matugen --mode dark image /path/to/wallpaper.jpg
+
+==============================================================================
+OPTIONS                                                 *matugen-nvim-bridge-options*
+
+palette_path    Required string. Path to the JSON file. A leading ~ is expanded.
+
+watch           Boolean, default true. Reload on writes and replacements, with
+                a 100 ms debounce. The palette directory must already exist.
+
+transparent     Boolean, default false. Remove content and floating-window
+                backgrounds so the terminal background shows through.
+
+contrast        Number from 1 to 21, default 4.5. Minimum text contrast ratio.
+                A target that cannot be met rejects the new palette.
+                See |matugen-nvim-bridge-contrast|.
+
+colors          Table, default {}. Starting colors for syntax roles, expressed
+                as #RRGGBB strings. Lightness and chroma may be adjusted to
+                satisfy contrast and stay within sRGB.
+
+Available syntax roles: foreground, comment, punctuation, keyword, func, string,
+type, number, constant, property. Example: >lua
+
+    require("matugen_nvim_bridge").setup({
+        palette_path = "~/.cache/matugen/nvim-colors.json",
+        transparent = true,
+        contrast = 4.5,
+        colors = {
+            func = "#80baff",
+            number = "#efa164",
+        },
+    })
+
+==============================================================================
+INPUT                                                     *matugen-nvim-bridge-input*
+
+A flat Matugen template must provide surface, on_surface, primary and outline: >
+
+    {
+      "surface": "#101510",
+      "on_surface": "#e1e6dd",
+      "primary": "#95d5a7",
+      "outline": "#8b9388"
+    }
+<
+Optional fields used by the theme:
+    surface_container_low, surface_container, surface_container_high,
+    primary_container, outline_variant, error
+
+surface_low and surface_high are accepted aliases for the corresponding
+container fields. Missing optional colors are derived from the required colors.
+
+Matugen 4 native --json hex exports are accepted using
+colors.<role>.default.color. The exported default colors choose the mode.
+Manually written files in the same format work too. Values must be #RRGGBB.
+
+Lua/Vim colorscheme files and Base16-only exports are not accepted as input.
+
+==============================================================================
+RELOADING                                                *matugen-nvim-bridge-reload*
+
+:MatugenNvimBridgeReload                                      *:MatugenNvimBridgeReload*
+    Read the palette file and activate the complete colorscheme. This command
+    also works when watch=false or another colorscheme is selected.
+
+:colorscheme matugen-nvim-bridge
+    Select the colorscheme after setup, reading the latest palette.
+
+:checkhealth matugen_nvim_bridge
+    Check Neovim, configured input, contrast and file watching.
+
+Ordinary writes and atomic file replacements trigger automatic reload. Choosing
+a different colorscheme suspends automatic updates until this one is selected
+again. Valid reloads emit |ColorScheme| so other plugins can refresh.
+
+Invalid or incomplete input leaves the current highlights in place. When the
+watcher is active, a later valid write is retried automatically.
+
+==============================================================================
+CONTRAST                                                *matugen-nvim-bridge-contrast*
+
+Each syntax role, the accent and error text are checked against nine backgrounds:
+the editor surface, cursorline, three UI surfaces and four diff backgrounds.
+Selection and search text are checked against their own backgrounds.
+
+The contrast option defaults to 4.5:1. Color generation adjusts lightness while
+preserving hue where possible. It reduces chroma to fit sRGB. Impossible targets
+reject generation rather than silently lowering the requested ratio.
+
+Decorative borders and whitespace markers use subtler colors.
+
+With transparent=true, the actual background also depends on the terminal and
+wallpaper. Calculated ratios cannot guarantee contrast over that composited
+background.
+
+==============================================================================
+LUA API                                                       *matugen-nvim-bridge-api*
+
+require("matugen_nvim_bridge").setup(options)
+    Configure and select the colorscheme. See |matugen-nvim-bridge-options|.
+
+require("matugen_nvim_bridge").reload()
+    Return the applied palette, or nil and an error. Read errors are reported
+    through vim.notify and leave the current highlights intact.
+
+require("matugen_nvim_bridge").generate(data, options)
+    Generate without changing the editor. options uses the color-generation
+    settings contrast and colors; palette_path is not needed for this call.
+    Invalid input raises an error, so callers may use pcall.
+
+    Returns a table with:
+        colors       Syntax colors by role.
+        contrast     Each role's lowest checked contrast ratio.
+        background   Main background color.
+        backgrounds  Background colors checked for syntax contrast.
+        mode         "dark" or "light".
+        ui           Generated UI colors.
+
+require("matugen_nvim_bridge").status()
+    Return palette_path, watching, active, loaded and a copy of the configured
+    options. This is a diagnostic snapshot; changing it has no effect.
+
+require("matugen_nvim_bridge").current
+    The most recently applied palette, or nil before the first successful load.
+
+==============================================================================
+TROUBLESHOOTING                                  *matugen-nvim-bridge-troubleshooting*
+
+No automatic update:
+    Ensure palette_path matches Matugen's output_path, the parent directory
+    exists, watch=true, and matugen-nvim-bridge is selected.
+    Run :checkhealth matugen_nvim_bridge and :MatugenNvimBridgeReload.
+
+The parent directory was missing at startup:
+    Generate the Matugen file, then call setup() again to start watching.
+
+Light/dark mode does not change:
+    Generate a palette with Matugen's --mode option. The file determines the
+    mode; changing 'background' does not generate new colors.
+
+Transparency does not appear:
+    Set transparent=true. Terminal opacity and compositor blur are managed
+    outside Neovim.
+
+vim:tw=78:ts=8:noet:ft=help:norl:

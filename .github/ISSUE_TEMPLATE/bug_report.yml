@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a reproducible problem with the theme or palette reload.
+body:
+  - type: input
+    id: neovim
+    attributes:
+      label: Neovim version
+      placeholder: Output of nvim --version
+    validations:
+      required: true
+  - type: input
+    id: matugen
+    attributes:
+      label: Matugen version
+      placeholder: Output of matugen --version, or manually written JSON
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and expected behavior
+      description: Include the minimal setup and palette JSON needed to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: health
+    attributes:
+      label: Health check output
+      description: Run :checkhealth matugen_nvim_bridge and paste the result.
+      render: text
